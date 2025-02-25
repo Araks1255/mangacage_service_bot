@@ -19,7 +19,7 @@ func RegisterCommands(bot *tgbotapi.BotAPI, db *gorm.DB) {
 		DB:  db,
 	}
 
-	h.AllowedUsersTgIds = make(map[int64]uint, 10)
+	h.AllowedUsersTgIds = make(map[int64]uint, 10) // Потом надо будет заполнять из бд автоматически при запуске
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -47,6 +47,13 @@ func RegisterCommands(bot *tgbotapi.BotAPI, db *gorm.DB) {
 
 			case "approve_title":
 				go h.ApproveTitle(update)
+
+			case "return_title_to_moderation":
+				go h.ReturnTitleToModeration(update)
+
+			case "get_chapters_on_moderation":
+				go h.GetChaptersOnModeration(update)
+
 			}
 		}
 	}

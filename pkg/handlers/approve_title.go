@@ -18,11 +18,11 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 
 	desiredTitleID, err := strconv.Atoi(update.Message.CommandArguments())
 	if err != nil {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите ID тайтла, который хотите завершить через пробел после команды\n\nПример: /approve_title 1"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите ID тайтла, который хотите одобрить, через пробел после команды\n\nПример: /approve_title 1"))
 		return
 	}
 
-	if result := h.DB.Exec("UPDATE titles SET on_moderation = false, moderator_id = ? WHERE id = ?", desiredTitleID, userID); result.Error != nil {
+	if result := h.DB.Exec("UPDATE titles SET on_moderation = false, moderator_id = ? WHERE id = ?", userID, desiredTitleID); result.Error != nil {
 		log.Println(result.Error)
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось снять тайтл с модерации. Возможно вы ошиблись в айди"))
 		return
