@@ -9,7 +9,7 @@ import (
 func (h handler) GetChaptersOnModeration(update tgbotapi.Update) {
 	tgUserID := update.Message.Chat.ID
 
-	if _, ok := h.AllowedUsersTgIds[tgUserID]; !ok {
+	if _, ok := h.AllowedUsers[tgUserID]; !ok {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Вы не являетесь модератором или администратором"))
 		return
 	}

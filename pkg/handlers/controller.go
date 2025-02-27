@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -8,9 +9,9 @@ import (
 )
 
 type handler struct {
-	Bot               *tgbotapi.BotAPI
-	DB                *gorm.DB
-	AllowedUsersTgIds map[int64]uint
+	Bot          *tgbotapi.BotAPI
+	DB           *gorm.DB
+	AllowedUsers map[int64]uint
 }
 
 func RegisterCommands(bot *tgbotapi.BotAPI, db *gorm.DB) {
@@ -19,7 +20,19 @@ func RegisterCommands(bot *tgbotapi.BotAPI, db *gorm.DB) {
 		DB:  db,
 	}
 
-	h.AllowedUsersTgIds = make(map[int64]uint, 10) // Потом надо будет заполнять из бд автоматически при запуске
+	h.AllowedUsers = make(map[int64]uint, 10) // Потом надо будет заполнять из бд автоматически при запуске
+
+	var allowedUsersIds []uint
+	h.DB.Raw("SELECT users.id FROM users INNER JOIN user_roles ON users.id = user_roles.user_id INNER JOIN roles ON user_roles.role_id = roles.id WHERE roles.name = 'moder' OR roles.name = 'admin'").Scan(&allowedUsersIds)
+
+	var allowedUsersTgIDs []int64
+	h.DB.Raw("SELECT users.tg_user_id FROM users INNER JOIN user_roles ON users.id = user_roles.user_id INNER JOIN roles ON user_roles.role_id = roles.id WHERE roles.name = 'moder' OR roles.name = 'admin'").Scan(&allowedUsersTgIDs)
+
+	for i := 0; i < len(allowedUsersIds); i++ {
+		h.AllowedUsers[allowedUsersTgIDs[i]] = allowedUsersIds[i]
+	}
+
+	log.Println(h.AllowedUsers)
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -54,6 +67,8 @@ func RegisterCommands(bot *tgbotapi.BotAPI, db *gorm.DB) {
 			case "get_chapters_on_moderation":
 				go h.GetChaptersOnModeration(update)
 
+			case "review_chapter":
+				go h.ReviewChapter(update)
 			}
 		}
 	}

@@ -56,7 +56,7 @@ func (h handler) Login(update tgbotapi.Update, mutex *sync.RWMutex) {
 	}
 
 	mutex.Lock()
-	h.AllowedUsersTgIds[tgUserID] = userID
+	h.AllowedUsers[tgUserID] = userID
 	mutex.Unlock()
 
 	msg := tgbotapi.NewMessage(tgUserID, "Вход в аккаунт выполнен успешно")

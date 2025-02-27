@@ -10,7 +10,7 @@ import (
 func (h handler) ApproveTitle(update tgbotapi.Update) {
 	tgUserID := update.Message.Chat.ID
 
-	userID, ok := h.AllowedUsersTgIds[tgUserID]
+	userID, ok := h.AllowedUsers[tgUserID]
 	if !ok {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Вы не являетесь модератором или администратором"))
 		return
