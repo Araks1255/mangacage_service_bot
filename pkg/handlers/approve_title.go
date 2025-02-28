@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"log"
-	"strconv"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -16,13 +16,9 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 		return
 	}
 
-	desiredTitleID, err := strconv.Atoi(update.Message.CommandArguments())
-	if err != nil {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите ID тайтла, который хотите одобрить, через пробел после команды\n\nПример: /approve_title 1"))
-		return
-	}
+	desiredTitle := strings.ToLower(update.Message.CommandArguments())
 
-	if result := h.DB.Exec("UPDATE titles SET on_moderation = false, moderator_id = ? WHERE id = ?", userID, desiredTitleID); result.Error != nil {
+	if result := h.DB.Exec("UPDATE titles SET on_moderation = false, moderator_id = ? WHERE name = ?", userID, desiredTitle); result.Error != nil {
 		log.Println(result.Error)
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось снять тайтл с модерации. Возможно вы ошиблись в айди"))
 		return
