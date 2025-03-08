@@ -2,10 +2,21 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
-	"github.com/Araks1255/mangacage/pkg/common/models"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"gorm.io/gorm"
 )
+
+type result struct {
+	gorm.Model
+	Name        string
+	Description string
+	CreatorName string
+	ModerName   string
+	AuthorName  string
+}
 
 func (h handler) GetTitlesOnModeration(update tgbotapi.Update) {
 	tgUserID := update.Message.Chat.ID
@@ -15,33 +26,60 @@ func (h handler) GetTitlesOnModeration(update tgbotapi.Update) {
 		return
 	}
 
-	var titles []models.Title
-	h.DB.Raw("SELECT * FROM titles WHERE on_moderation").Scan(&titles)
+	var titles []result
+	h.DB.Raw(`SELECT titles.id, titles.created_at, titles.updated_at, titles.deleted_at, titles.name, titles.description,
+	users.user_name AS creator_name, moders.user_name AS moder_name, authors.name AS author_name FROM titles
+	INNER JOIN users ON titles.creator_id = users.id
+	INNER JOIN authors ON titles.author_id = authors.id
+	LEFT JOIN users AS moders ON titles.moderator_id = moders.id
+	WHERE titles.on_moderation`).Scan(&titles)
 
 	if len(titles) == 0 {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Нет тайтлов на модерации"))
 		return
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, fmt.Sprintf("Тайтлов на модерации: %d", len(titles))))
-
-	var creatorName, authorName, createdAt string
+	var (
+		titleGenres []string
+		msg         tgbotapi.MessageConfig
+		response    string
+	)
 
 	for i := 0; i < len(titles); i++ {
-		h.DB.Raw("SELECT user_name FROM users WHERE id = ?", titles[i].CreatorID).Scan(&creatorName)
-		h.DB.Raw("SELECT name FROM authors WHERE id = ?", titles[i].AuthorID).Scan(&authorName)
+		h.DB.Raw(`SELECT genres.name FROM genres
+		INNER JOIN title_genres ON genres.id = title_genres.genre_id
+		INNER JOIN titles ON title_genres.title_id = titles.id
+		WHERE titles.id = ?`, titles[i].ID,
+		).Scan(&titleGenres)
 
-		createdAt = titles[i].CreatedAt.Format("2006-01-02 15:04:05")
+		response = fmt.Sprintf(
+			`id тайтла: %d
 
-		response := fmt.Sprintf("ID тайтла: %d\n\nНазвание: %s\nОписание: %s\nИмя создателя: %s\nИмя автора: %s\n\nОтправлен на модерацию в %s",
+			Название: %s
+			Описание: %s
+			Создатель: %s
+			Автор: %s
+
+			Жанры: %s
+			
+			Последний редактировавший модератор: %s
+			
+			Создан: %s
+			Последний раз изменён: %s`,
 			titles[i].ID,
 			titles[i].Name,
 			titles[i].Description,
-			creatorName,
-			authorName,
-			createdAt)
+			titles[i].CreatorName,
+			titles[i].AuthorName,
+			strings.Join(titleGenres, ", "),
+			titles[i].ModerName,
+			titles[i].CreatedAt.Format(time.DateTime),
+			titles[i].UpdatedAt.Format(time.DateTime),
+		)
 
-		msg := tgbotapi.NewMessage(tgUserID, response)
+		msg = tgbotapi.NewMessage(tgUserID, response)
 		h.Bot.Send(msg)
 	}
+
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Всё"))
 }

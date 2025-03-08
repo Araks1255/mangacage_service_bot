@@ -72,6 +72,12 @@ func RegisterCommands(bot *tgbotapi.BotAPI, db *gorm.DB) {
 
 			case "approve_chapter":
 				go h.ApproveChapter(update)
+
+			case "reject_title":
+				go h.RejectTitle(update)
+
+			case "reject_chapter":
+				go h.RejectChapter(update)
 			}
 		}
 	}

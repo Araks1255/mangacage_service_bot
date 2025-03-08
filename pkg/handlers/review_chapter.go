@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Araks1255/mangacage/pkg/common/models"
 
@@ -17,7 +18,10 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 		return
 	}
 
-	desiredChapter := update.Message.CommandArguments()
+	desiredChapter := strings.ToLower(update.Message.CommandArguments())
+	if desiredChapter == "" {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Для рассмотрения главы напишите её название после написания команды\n\nПример: /review_chapter Глава 1"))
+	}
 
 	var chapter models.Chapter
 	h.DB.Raw("SELECT * FROM chapters WHERE name = ?", desiredChapter).Scan(&chapter)
@@ -31,7 +35,7 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 
 	createdAt := chapter.CreatedAt.Format("2006-01-02 15:04:05")
 
-	response := fmt.Sprintf("Айди главы: %d\n\nНазвание: %s\nОписание: %s\nКоличество страниц: %d\nТайтл: %s\n\nСоздан в %s", chapter.ID, chapter.Name, chapter.Description, chapter.NumberOfPages, chapterTitle, createdAt)
+	response := fmt.Sprintf("Айди главы: %d\n\nНазвание: %s\nОписание: %s\nКоличество страниц: %d\nТайтл: %s\n\nСоздана в %s", chapter.ID, chapter.Name, chapter.Description, chapter.NumberOfPages, chapterTitle, createdAt)
 
 	h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
 

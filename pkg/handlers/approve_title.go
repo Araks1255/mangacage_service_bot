@@ -17,6 +17,10 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 	}
 
 	desiredTitle := strings.ToLower(update.Message.CommandArguments())
+	if desiredTitle == "" {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите название тайтла, который хотите одобрить, после вызова команды\n\nПример: /approve_title Мёртвый аккаунт"))
+		return
+	}
 
 	if result := h.DB.Exec("UPDATE titles SET on_moderation = false, moderator_id = ? WHERE name = ?", userID, desiredTitle); result.Error != nil {
 		log.Println(result.Error)

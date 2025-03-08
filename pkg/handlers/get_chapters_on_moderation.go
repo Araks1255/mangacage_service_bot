@@ -27,5 +27,5 @@ func (h handler) GetChaptersOnModeration(update tgbotapi.Update) {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, chapters[i]))
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Для рассмотрения главы вызовите функцию /review_chapter с указанием названия необходимой главы\n\nПример: /review_chapter Мёртвый аккаунт"))
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Для рассмотрения главы вызовите функцию /review_chapter с указанием названия необходимой главы\n\nПример: /review_chapter Глава 1"))
 }
