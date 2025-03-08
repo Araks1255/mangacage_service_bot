@@ -9,21 +9,21 @@ import (
 	"gorm.io/gorm"
 )
 
-type result struct {
-	gorm.Model
-	Name        string
-	Description string
-	CreatorName string
-	ModerName   string
-	AuthorName  string
-}
-
 func (h handler) GetTitlesOnModeration(update tgbotapi.Update) {
 	tgUserID := update.Message.Chat.ID
 
 	if _, ok := h.AllowedUsers[tgUserID]; !ok {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Вы не являетесь модератором или администратором"))
 		return
+	}
+
+	type result struct {
+		gorm.Model
+		Name        string
+		Description string
+		CreatorName string
+		ModerName   string
+		AuthorName  string
 	}
 
 	var titles []result

@@ -58,6 +58,9 @@ func RegisterCommands(bot *tgbotapi.BotAPI, db *gorm.DB) {
 			case "get_titles_on_moderation":
 				go h.GetTitlesOnModeration(update)
 
+			case "get_volumes_on_moderation":
+				go h.GetVolumesOnModeration(update)
+
 			case "approve_title":
 				go h.ApproveTitle(update)
 
