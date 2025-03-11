@@ -3,7 +3,7 @@ package handlers
 import (
 	"context"
 	"log"
-	"strings"
+	"strconv"
 
 	pb "github.com/Araks1255/mangacage_protos"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -20,15 +20,22 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 		return
 	}
 
-	desiredChapter := strings.ToLower(update.Message.CommandArguments())
-	if desiredChapter == "" {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите название главы, которую хотите одобрить через пробел после вызова команды\n\nПример: /approve_chapter Глава 1"))
+	desiredChapterID, err := strconv.Atoi(update.Message.CommandArguments())
+	if err != nil {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите id главы, которую хотите одобрить, после вызова функции\n\nПример: /approve_chapter 12"))
 		return
 	}
 
-	if result := h.DB.Exec("UPDATE chapters SET on_moderation = false, moderator_id = ? WHERE name = ?", userID, desiredChapter); result.RowsAffected == 0 {
+	var existingChapterName string
+	h.DB.Raw("SELECT name FROM chapters WHERE id = ? AND on_moderation", desiredChapterID).Scan(&existingChapterName)
+	if existingChapterName == "" {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Глава не найдена"))
+		return
+	}
+
+	if result := h.DB.Exec("UPDATE chapters SET on_moderation = false, moderator_id = ? WHERE id = ?", userID, desiredChapterID); result.Error != nil {
 		log.Println(result.Error)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось снять главу с модерации. Скорее всего вы совершили опечатку в названии"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))
 		return
 	}
 
@@ -43,7 +50,7 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 
 	client := pb.NewNotificationsClient(conn)
 
-	if _, err := client.NotifyAboutReleaseOfNewChapterInTitle(context.Background(), &pb.ReleasedChapter{Name: desiredChapter}); err != nil {
+	if _, err := client.NotifyAboutReleaseOfNewChapterInTitle(context.Background(), &pb.ReleasedChapter{Name: existingChapterName}); err != nil {
 		log.Println(err)
 	}
 }

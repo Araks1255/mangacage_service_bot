@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"log"
-	"strings"
+	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -16,15 +16,22 @@ func (h handler) RejectChapter(update tgbotapi.Update) {
 		return
 	}
 
-	desiredChapter := strings.ToLower(update.Message.CommandArguments())
-	if desiredChapter == "" {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите название главы, которую хотите отвергнуть, после команды\n\nПример: /reject_chapter Глава первая"))
+	desiredChapterID, err := strconv.Atoi(update.Message.CommandArguments())
+	if err != nil {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите id главы, которую хотите отвергнуть, после вызова функции\n\nПример: /reject_chapter 12"))
 		return
 	}
 
-	if result := h.DB.Exec("DELETE FROM chapters WHERE name = ?", desiredChapter); result.RowsAffected == 0 {
+	var existingChapterName string
+	h.DB.Raw("SELECT name FROM chapters WHERE id = ?", desiredChapterID).Scan(&existingChapterName)
+	if existingChapterName == "" {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Глава не найдена"))
+		return
+	}
+
+	if result := h.DB.Exec("DELETE FROM chapters WHERE id = ?", desiredChapterID); result.Error != nil {
 		log.Println(result.Error)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось отвергнуть главу"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))
 		return
 	}
 
