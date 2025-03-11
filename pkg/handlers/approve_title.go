@@ -22,11 +22,18 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 		return
 	}
 
-	if result := h.DB.Exec("UPDATE titles SET on_moderation = false, moderator_id = ? WHERE name = ?", userID, desiredTitle); result.Error != nil {
-		log.Println(result.Error)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось снять тайтл с модерации. Возможно вы ошиблись в айди"))
+	var existingTitleID uint
+	h.DB.Raw("SELECT id FROM titles WHERE name = ? AND on_moderation", desiredTitle).Scan(&existingTitleID)
+	if existingTitleID == 0 {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл не найден. Введите название тайтла, который хотите одобрить, через пробел после вызова функции\n\nПример: /approve_title Мертвый аккаунт"))
 		return
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно снят с модерации"))
+	if result := h.DB.Exec("UPDATE titles SET on_moderation = false, moderator_id = ? WHERE id = ?", userID, existingTitleID); result.Error != nil {
+		log.Println(result.Error)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))
+		return
+	}
+
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно одобрен"))
 }

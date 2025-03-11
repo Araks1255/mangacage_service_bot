@@ -86,6 +86,9 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 
 			case "reject_chapter":
 				go h.RejectChapter(update)
+
+			case "approve_volume":
+				go h.ApproveVolume(update)
 			}
 		}
 	}

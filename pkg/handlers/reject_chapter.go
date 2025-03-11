@@ -24,7 +24,7 @@ func (h handler) RejectChapter(update tgbotapi.Update) {
 
 	var existingChapterName string
 	h.DB.Raw("SELECT name FROM chapters WHERE id = ?", desiredChapterID).Scan(&existingChapterName)
-	if existingChapterName == "" {
+	if existingChapterName == "" { // Это на случай, если надо будет отправлять уведомления
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Глава не найдена"))
 		return
 	}

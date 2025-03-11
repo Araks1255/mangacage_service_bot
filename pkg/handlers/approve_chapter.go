@@ -22,6 +22,7 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 
 	desiredChapterID, err := strconv.Atoi(update.Message.CommandArguments())
 	if err != nil {
+		log.Println(err)
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите id главы, которую хотите одобрить, после вызова функции\n\nПример: /approve_chapter 12"))
 		return
 	}
