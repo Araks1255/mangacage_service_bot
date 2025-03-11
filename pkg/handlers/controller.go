@@ -5,22 +5,27 @@ import (
 	"sync"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
 type handler struct {
 	Bot          *tgbotapi.BotAPI
 	DB           *gorm.DB
+	Collection   *mongo.Collection
 	AllowedUsers map[int64]uint
 }
 
-func RegisterCommands(bot *tgbotapi.BotAPI, db *gorm.DB) {
+func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
+	chapterPagesCollection := client.Database("mangacage").Collection("chapters_pages")
+
 	h := handler{
-		Bot: bot,
-		DB:  db,
+		Bot:        bot,
+		DB:         db,
+		Collection: chapterPagesCollection,
 	}
 
-	h.AllowedUsers = make(map[int64]uint, 10) // Потом надо будет заполнять из бд автоматически при запуске
+	h.AllowedUsers = make(map[int64]uint, 10)
 
 	var allowedUsersIds []uint
 	h.DB.Raw("SELECT users.id FROM users INNER JOIN user_roles ON users.id = user_roles.user_id INNER JOIN roles ON user_roles.role_id = roles.id WHERE roles.name = 'moder' OR roles.name = 'admin'").Scan(&allowedUsersIds)

@@ -16,6 +16,12 @@ func main() {
 
 	token := viper.Get("TOKEN").(string)
 	dbUrl := viper.Get("DB_URL").(string)
+	mongoUrl := viper.Get("MONGO_URL").(string)
+
+	mongoClient, err := db.MongoInit(mongoUrl)
+	if err != nil {
+		panic(err)
+	}
 
 	db, err := db.Init(dbUrl)
 	if err != nil {
@@ -27,5 +33,5 @@ func main() {
 		panic(err)
 	}
 
-	handlers.RegisterCommands(bot, db)
+	handlers.RegisterCommands(bot, mongoClient, db)
 }
