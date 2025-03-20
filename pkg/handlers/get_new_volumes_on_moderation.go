@@ -50,5 +50,5 @@ func (h handler) GetNewVolumesOnModeration(update tgbotapi.Update) {
 		h.Bot.Send(msg)
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Всё (все данные томов выведены, больше нет)"))
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Всё (все данные томов выведены, больше нет)\nЧтобы одобрить том, укажите его id обращения после вызова команды approve_volume\n\nПример: /approve_volume 2"))
 }

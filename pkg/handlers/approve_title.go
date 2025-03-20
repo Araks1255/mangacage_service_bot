@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"database/sql"
 	"log"
-	"strings"
+	"strconv"
 
+	"github.com/Araks1255/mangacage/pkg/common/models"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/lib/pq"
+	"gorm.io/gorm"
 )
 
 func (h handler) ApproveTitle(update tgbotapi.Update) {
@@ -16,24 +20,86 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 		return
 	}
 
-	desiredTitle := strings.ToLower(update.Message.CommandArguments())
-	if desiredTitle == "" {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите название тайтла, который хотите одобрить, после вызова команды\n\nПример: /approve_title Мёртвый аккаунт"))
+	titleOnModerationID, err := strconv.Atoi(update.Message.CommandArguments())
+	if err != nil {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите id обращения тайтла, который хотите одобрить\n\nПример: /approve_title 2"))
 		return
 	}
 
-	var existingTitleID uint
-	h.DB.Raw("SELECT id FROM titles WHERE name = ? AND on_moderation", desiredTitle).Scan(&existingTitleID)
-	if existingTitleID == 0 {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл не найден. Введите название тайтла, который хотите одобрить, через пробел после вызова функции\n\nПример: /approve_title Мертвый аккаунт"))
+	var titleOnModeration models.TitleOnModeration
+	h.DB.Raw("SELECT * FROM titles_on_moderation WHERE id = ?", titleOnModerationID).Scan(&titleOnModeration)
+	if titleOnModeration.ID == 0 {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "На модерации нет тайтла с таким id обращения"))
 		return
 	}
 
-	if result := h.DB.Exec("UPDATE titles SET on_moderation = false, moderator_id = ? WHERE id = ?", userID, existingTitleID); result.Error != nil {
+	var title models.Title
+	h.DB.Raw("SELECT * FROM titles WHERE id = ?", titleOnModeration.ExistingID).Scan(&title)
+
+	doesTitleExist := title.ID != 0
+
+	ConvertToTitle(titleOnModeration, &title)
+	title.ModeratorID = sql.NullInt64{Int64: int64(userID), Valid: true}
+
+	tx := h.DB.Begin()
+
+	if title.ID != 0 {
+		if result := tx.Exec("DELETE FROM title_genres WHERE title_id = ?", title.ID); result.Error != nil {
+			tx.Rollback()
+			log.Println(result.Error)
+			h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при удалении старых жанров тайтла"))
+			return
+		}
+	}
+
+	if result := tx.Save(&title); result.Error != nil {
+		tx.Rollback()
 		log.Println(result.Error)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при создании или обновлении тайтла"))
 		return
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно одобрен"))
+	if err = AddGenresToTitle(title.ID, titleOnModeration.Genres, tx); err != nil {
+		tx.Rollback()
+		log.Println(err)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при добавлении жанров тайтлу"))
+		return
+	}
+
+	tx.Commit()
+
+	if doesTitleExist {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно изменён"))
+	} else {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно создан"))
+	}
+
+	if result := h.DB.Exec("DELETE FROM titles_on_moderation WHERE id = ?", titleOnModeration.ID); result.Error != nil {
+		log.Println(result.Error)
+	}
+	// Удалять тайтл на модерации
+}
+
+func ConvertToTitle(titleOnModeration models.TitleOnModeration, title *models.Title) {
+	title.Name = titleOnModeration.Name
+	title.Description = titleOnModeration.Description
+	title.AuthorID = titleOnModeration.AuthorID
+	title.CreatorID = titleOnModeration.CreatorID
+	title.TeamID = titleOnModeration.TeamID
+}
+
+func AddGenresToTitle(titleID uint, genres []string, tx *gorm.DB) error {
+	query := `
+		INSERT INTO title_genres (title_id, genre_id)
+		SELECT ?, genres.id
+		FROM genres
+		JOIN UNNEST(?::TEXT[]) AS genre_name ON genres.name = genre_name
+	`
+
+	if result := tx.Exec(query, titleID, pq.Array(genres)); result.Error != nil {
+		log.Println(result.Error)
+		return result.Error
+	}
+
+	return nil
 }
