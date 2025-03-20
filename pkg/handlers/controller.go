@@ -69,14 +69,20 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 			case "get_new_volumes_on_moderation":
 				go h.GetNewVolumesOnModeration(update)
 
+			case "get_edited_volumes_on_moderation":
+				go h.GetEditedVolumesOnModeration(update)
+
+			case "get_new_chapters_on_moderation":
+				go h.GetNewChaptersOnModeration(update)
+
+			case "get_edited_chapters_on_moderation":
+				go h.GetEditedChaptersOnModeration(update)
+
 			case "approve_title":
 				go h.ApproveTitle(update)
 
 			case "return_title_to_moderation":
 				go h.ReturnTitleToModeration(update)
-
-			case "get_chapters_on_moderation":
-				go h.GetChaptersOnModeration(update)
 
 			case "review_chapter":
 				go h.ReviewChapter(update)

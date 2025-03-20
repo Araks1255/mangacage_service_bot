@@ -36,7 +36,7 @@ func (h handler) GetEditedVolumesOnModeration(update tgbotapi.Update) {
 	).Scan(&volumes)
 
 	if len(volumes) == 0 {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Нет томов на модерации"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Нет томов, ожидающих подтверждения редактирования"))
 		return
 	}
 
