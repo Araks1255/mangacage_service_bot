@@ -29,7 +29,7 @@ func (h handler) RejectTitle(update tgbotapi.Update) {
 		return
 	}
 
-	if result := h.DB.Exec("DELETE FROM titles WHERE id = ? CASCADE", existingTitleID); result.Error != nil {
+	if result := h.DB.Exec("DELETE FROM titles CASCADE WHERE id = ?", existingTitleID); result.Error != nil {
 		log.Println(result.Error)
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))
 		return
