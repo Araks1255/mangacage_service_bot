@@ -60,11 +60,14 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 			case "login":
 				go h.Login(update, &mutex)
 
-			case "get_titles_on_moderation":
-				go h.GetTitlesOnModeration(update)
+			case "get_new_titles_on_moderation":
+				go h.GetNewTitlesOnModeration(update)
 
-			case "get_volumes_on_moderation":
-				go h.GetVolumesOnModeration(update)
+			case "get_edited_titles_on_moderation":
+				go h.GetEditedTitlesOnModeration(update)
+
+			case "get_new_volumes_on_moderation":
+				go h.GetNewVolumesOnModeration(update)
 
 			case "approve_title":
 				go h.ApproveTitle(update)
