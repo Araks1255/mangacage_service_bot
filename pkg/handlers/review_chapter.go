@@ -89,7 +89,7 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 	for i := 0; i < chapter.NumberOfPages; i++ {
 		projection := bson.M{"pages": bson.M{"$slice": []int{i, 1}}}
 
-		err := h.Collection.FindOne(context.TODO(), filter, options.FindOne().SetProjection(projection)).Decode(&result)
+		err := h.ChaptersPages.FindOne(context.TODO(), filter, options.FindOne().SetProjection(projection)).Decode(&result)
 		if err != nil {
 			log.Println(err)
 			h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))

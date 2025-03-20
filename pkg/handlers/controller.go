@@ -10,19 +10,29 @@ import (
 )
 
 type handler struct {
-	Bot          *tgbotapi.BotAPI
-	DB           *gorm.DB
-	Collection   *mongo.Collection
-	AllowedUsers map[int64]uint
+	Bot                       *tgbotapi.BotAPI
+	DB                        *gorm.DB
+	TitlesOnModerationCovers  *mongo.Collection
+	TitlesCovers              *mongo.Collection
+	ChaptersOnModerationPages *mongo.Collection
+	ChaptersPages             *mongo.Collection
+	AllowedUsers              map[int64]uint
 }
 
 func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
-	chapterPagesCollection := client.Database("mangacage").Collection("chapters_pages")
+	titlesOnModerationCovers := client.Database("mangacage").Collection("titles_on_moderation_covers")
+	titlesCovers := client.Database("mangacage").Collection("titles_covers")
+
+	chaptersOnModerationPages := client.Database("mangacage").Collection("chapters_on_moderation_pages")
+	chaptersPagesCollection := client.Database("mangacage").Collection("chapters_pages")
 
 	h := handler{
-		Bot:        bot,
-		DB:         db,
-		Collection: chapterPagesCollection,
+		Bot:                       bot,
+		DB:                        db,
+		TitlesOnModerationCovers:  titlesOnModerationCovers,
+		TitlesCovers:              titlesCovers,
+		ChaptersOnModerationPages: chaptersOnModerationPages,
+		ChaptersPages:             chaptersPagesCollection,
 	}
 
 	h.AllowedUsers = make(map[int64]uint, 10)

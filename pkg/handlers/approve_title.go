@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"strconv"
@@ -8,8 +9,14 @@ import (
 	"github.com/Araks1255/mangacage/pkg/common/models"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/lib/pq"
+	"go.mongodb.org/mongo-driver/bson"
 	"gorm.io/gorm"
 )
+
+type TitleCover struct {
+	TitleID uint   `bson:"title_id"`
+	Cover   []byte `bson:"cover"`
+}
 
 func (h handler) ApproveTitle(update tgbotapi.Update) {
 	tgUserID := update.Message.Chat.ID
@@ -66,18 +73,40 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 		return
 	}
 
-	tx.Commit()
+	var titleCover TitleCover
 
+	filter := bson.M{"title_id": titleOnModerationID}
+	if err = h.TitlesOnModerationCovers.FindOne(context.TODO(), filter).Decode(&titleCover); err != nil {
+		tx.Rollback()
+		log.Println(err)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при поиске обложки тайтла"))
+		return
+	}
+	
+	titleCover.TitleID = title.ID
+	
+	if _, err = h.TitlesCovers.InsertOne(context.TODO(), titleCover); err != nil {
+		tx.Rollback()
+		log.Println(err)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при вставке обложки тайтла"))
+		return
+	}
+	
+	tx.Commit()
+	
 	if doesTitleExist {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно изменён"))
 	} else {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно создан"))
 	}
+		
+	if _, err = h.TitlesOnModerationCovers.DeleteOne(context.TODO(), filter); err != nil {
+		log.Println(err)
+	}
 
 	if result := h.DB.Exec("DELETE FROM titles_on_moderation WHERE id = ?", titleOnModeration.ID); result.Error != nil {
 		log.Println(result.Error)
 	}
-	// Удалять тайтл на модерации
 }
 
 func ConvertToTitle(titleOnModeration models.TitleOnModeration, title *models.Title) {
