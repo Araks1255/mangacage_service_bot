@@ -22,15 +22,15 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 		return
 	}
 
-	desiredChapterID, err := strconv.Atoi(update.Message.CommandArguments())
+	desiredChapterOnModerationID, err := strconv.Atoi(update.Message.CommandArguments())
 	if err != nil {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите айди главы, которую хотите рассмотреть, после вызова функции\n\nПример: /review_chapter 2"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите айди обращения главы, которую хотите рассмотреть, после вызова функции\n\nПример: /review_chapter 2"))
 		return
 	}
 
-	var existingChapterID uint
-	h.DB.Raw("SELECT id FROM chapters WHERE id = ?", desiredChapterID).Scan(&existingChapterID)
-	if existingChapterID == 0 {
+	var existingChapterOnModerationID uint
+	h.DB.Raw("SELECT id FROM chapters_on_moderation WHERE id = ?", desiredChapterOnModerationID).Scan(&existingChapterOnModerationID)
+	if existingChapterOnModerationID == 0 {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Глава не найдена"))
 		return
 	}
@@ -40,43 +40,38 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 		Name          string
 		Description   string
 		NumberOfPages int
+		ExistingID    uint
 		Volume        string
 		Title         string
+		Creator       string
 		Moder         string
 	}
 
-	h.DB.Raw(`SELECT chapters.id, chapters.created_at, chapters.updated_at, chapters.deleted_at, chapters.name, chapters.description,
-		chapters.number_of_pages, volumes.name AS volume, titles.name AS title, users.user_name AS moder FROM chapters
-		INNER JOIN volumes ON chapters.volume_id = volumes.id
+	h.DB.Raw(
+		`SELECT c.id, c.created_at, c.updated_at, c.deleted_at, c.name, c.description, c.number_of_pages, c.existing_id,
+		volumes.name AS volume, titles.name AS title, users.user_name AS creator, moders.user_name AS moder
+		FROM chapters_on_moderation AS c
+		INNER JOIN volumes ON c.volume_id = volumes.id
 		INNER JOIN titles ON volumes.title_id = titles.id
-		LEFT JOIN users ON chapters.moderator_id = users.id
-		WHERE chapters.on_moderation AND chapters.id = ?`,
-		desiredChapterID,
+		INNER JOIN users ON users.id =c.creator_id
+		LEFT JOIN users AS moders ON moders.id = c.moderator_id
+		WHERE c.id = ?`,
+		desiredChapterOnModerationID,
 	).Scan(&chapter)
 
-	response := fmt.Sprintf(
-		`ID главы: %d
-		
-		Глава тома %s тайтла %s
-		
-		Название: %s
-		Описание: %s
+	var response string
 
-		Количество страниц: %d
-
-		Последний раз редактировавший модератор: %s
-		
-		Создана: %s
-		Последний раз изменена: %s`,
-		chapter.ID,
-		chapter.Volume, chapter.Title,
-		chapter.Name,
-		chapter.Description,
-		chapter.NumberOfPages,
-		chapter.Moder,
-		chapter.CreatedAt.Format(time.DateTime),
-		chapter.UpdatedAt.Format(time.DateTime),
-	)
+	if chapter.Moder == "" {
+		response = fmt.Sprintf(
+			"Причина обращения: создание\nid обращения: %d\n\nГлава для тома %s тайтла %s\n\nНазвание: %s\nОписание: %s\nКоличество страниц: %d\nСоздатель: %s\n\nОтправлена на модерацию:\n%s",
+			chapter.ID, chapter.Volume, chapter.Title, chapter.Name, chapter.Description, chapter.NumberOfPages, chapter.Creator, chapter.CreatedAt.Format(time.DateTime),
+		)
+	} else {
+		response = fmt.Sprintf(
+			"Причина обращения: редактирование\nid главы: %d\nid обращения: %d\n\nГлава для тома %s тайтла %s\n\nНазвание: %s\nОписание: %s\nКоличество страниц: %d\nСоздатель: %s\nПоследний редактировавший модератор: %s\n\nОтпралена на модерацию:\n%s",
+			chapter.ExistingID, chapter.ID, chapter.Volume, chapter.Title, chapter.Name, chapter.Description, chapter.NumberOfPages, chapter.Creator, chapter.Moder, chapter.CreatedAt.Format(time.DateTime),
+		)
+	}
 
 	h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
 
@@ -89,7 +84,7 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 	for i := 0; i < chapter.NumberOfPages; i++ {
 		projection := bson.M{"pages": bson.M{"$slice": []int{i, 1}}}
 
-		err := h.ChaptersPages.FindOne(context.TODO(), filter, options.FindOne().SetProjection(projection)).Decode(&result)
+		err := h.ChaptersOnModerationPages.FindOne(context.TODO(), filter, options.FindOne().SetProjection(projection)).Decode(&result)
 		if err != nil {
 			log.Println(err)
 			h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))
@@ -97,9 +92,8 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 		}
 
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, fmt.Sprintf("Страница номер: %d", i+1)))
-		h.Bot.Send(tgbotapi.NewPhoto(tgUserID, tgbotapi.FileBytes{"page", result.Pages[0]}))
+		h.Bot.Send(tgbotapi.NewPhoto(tgUserID, tgbotapi.FileBytes{Name: "page", Bytes: result.Pages[0]}))
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Всё"))
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Чтобы одобрить главу, вызовите функцию /approve_chapter с указанием id главы\n\nЧтобы отвергнуть главу, вызовите функцию /reject_chapter с указанием id главы\n\nПримеры:\n/approve_chapter 12\n/reject_chapter 12"))
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Чтобы одобрить главу, вызовите функцию /approve_chapter с указанием id её обращения\n\nЧтобы отвергнуть главу, вызовите функцию /reject_chapter с указанием id её обращения\n\nПримеры:\n/approve_chapter 12\n/reject_chapter 12"))
 }
