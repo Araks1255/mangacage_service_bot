@@ -15,25 +15,24 @@ func (h handler) RejectVolume(update tgbotapi.Update) {
 		return
 	}
 
-	desiredVolumeID, err := strconv.Atoi(update.Message.CommandArguments())
+	desiredVolumeOnModerationID, err := strconv.Atoi(update.Message.CommandArguments())
 	if err != nil {
-		log.Println(err)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите id тома, который хотите отвергнуть\n\nПример: /reject_volume 12"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите id обращения тома, которое хотите отклонить\n\n Пример: /reject_volume 2"))
 		return
 	}
 
-	var desiredVolumeName string
-	h.DB.Raw("SELECT name FROM volumes WHERE id = ? AND on_moderation", desiredVolumeID).Scan(&desiredVolumeName)
-	if desiredVolumeName == "" { // Аналогично, на случай, если придётся отправлять уведомления
+	var existingVolumeOnModerationID uint
+	h.DB.Raw("SELECT id FROM volumes_on_moderation WHERE id = ?", desiredVolumeOnModerationID).Scan(&existingVolumeOnModerationID)
+	if existingVolumeOnModerationID == 0 {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Том не найден"))
 		return
 	}
 
-	if result := h.DB.Exec("DELETE FROM volumes WHERE id = ?", desiredVolumeID); result.Error != nil {
+	if result := h.DB.Exec("DELETE FROM volumes_on_moderation CASCADE WHERE id = ?", existingVolumeOnModerationID); result.Error != nil {
 		log.Println(result.Error)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить том"))
 		return
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Том успешно отвергнут"))
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Обращение на модерацию успешно отклонено"))
 }

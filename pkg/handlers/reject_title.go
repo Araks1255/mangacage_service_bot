@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"log"
-	"strings"
+	"strconv"
+	"context"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (h handler) RejectTitle(update tgbotapi.Update) {
@@ -16,24 +18,31 @@ func (h handler) RejectTitle(update tgbotapi.Update) {
 		return
 	}
 
-	desiredTitleName := strings.ToLower(update.Message.CommandArguments())
-	if desiredTitleName == "" {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите название тайтла, который хотите не принять, после вызова команды\n\nПример: /reject_title Мёртвый аккаунт"))
+	desiredTitleOnModerationID, err := strconv.Atoi(update.Message.CommandArguments())
+	if err != nil {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите id обращения тайтла, которое хотите отклонить\n\n Пример: /reject_title 2"))
 		return
 	}
 
-	var existingTitleID uint
-	h.DB.Raw("SELECT id FROM titles WHERE name = ? AND on_moderation", desiredTitleName).Scan(&existingTitleID)
-	if existingTitleID == 0 {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл не найден. Введите название тайтла, который хотите отвергнкть, через пробел после вызова функции\n\nПример: /reject_title Мертвый аккаунт"))
+	var existingTitleOnModerationID uint
+	h.DB.Raw("SELECT id FROM titles_on_moderation WHERE id = ?", desiredTitleOnModerationID).Scan(&existingTitleOnModerationID)
+	if existingTitleOnModerationID == 0 {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл не найден"))
 		return
 	}
 
-	if result := h.DB.Exec("DELETE FROM titles CASCADE WHERE id = ?", existingTitleID); result.Error != nil {
+	if result := h.DB.Exec("DELETE FROM titles_on_moderation CASCADE WHERE id = ?", existingTitleOnModerationID); result.Error != nil {
 		log.Println(result.Error)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить тайтл"))
 		return
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно отвергнут"))
+	filter := bson.M{"title_id":existingTitleOnModerationID}
+
+	if _, err = h.TitlesOnModerationCovers.DeleteOne(context.TODO(), filter); err != nil {
+		log.Println(err)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить обложку тайтла (если тайтл ожидал редактирования и обложка не была изменена, то её и не было)"))
+	}
+
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Обращение на модерацию успешно отклонено"))
 }

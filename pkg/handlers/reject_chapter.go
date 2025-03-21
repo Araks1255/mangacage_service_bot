@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"log"
 	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func (h handler) RejectChapter(update tgbotapi.Update) {
@@ -16,24 +18,31 @@ func (h handler) RejectChapter(update tgbotapi.Update) {
 		return
 	}
 
-	desiredChapterID, err := strconv.Atoi(update.Message.CommandArguments())
+	desiredChapterOnModerationID, err := strconv.Atoi(update.Message.CommandArguments())
 	if err != nil {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите id главы, которую хотите отвергнуть, после вызова функции\n\nПример: /reject_chapter 12"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите id обращения главы, которое хотите отклонить\n\n Пример: /reject_chapter 2"))
 		return
 	}
 
-	var existingChapterName string
-	h.DB.Raw("SELECT name FROM chapters WHERE id = ?", desiredChapterID).Scan(&existingChapterName)
-	if existingChapterName == "" { // Это на случай, если надо будет отправлять уведомления
+	var existingChapterOnModerationID uint
+	h.DB.Raw("SELECT id FROM chapters_on_moderation WHERE id = ?", desiredChapterOnModerationID).Scan(&existingChapterOnModerationID)
+	if existingChapterOnModerationID == 0 {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Глава не найдена"))
 		return
 	}
 
-	if result := h.DB.Exec("DELETE FROM chapters WHERE id = ?", desiredChapterID); result.Error != nil {
+	if result := h.DB.Exec("DELETE FROM chapters_on_moderation CASCADE WHERE id = ?", existingChapterOnModerationID); result.Error != nil {
 		log.Println(result.Error)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Ошибка сервера"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить главу"))
 		return
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Глава успешно отвергнута"))
+	filter := bson.M{"chapter_id": existingChapterOnModerationID}
+
+	if _, err = h.ChaptersOnModerationPages.DeleteOne(context.TODO(), filter); err != nil {
+		log.Println(err)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить страницы главы (если глава ожидала подтверждения редактирования, то их и не было)"))
+	}
+
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Обращение на модерацию успешно отклонено"))
 }
