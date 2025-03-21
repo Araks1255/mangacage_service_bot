@@ -35,7 +35,7 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 		return
 	}
 
-	var chapter struct {
+	var chapterOnModeration struct {
 		gorm.Model
 		Name          string
 		Description   string
@@ -57,31 +57,56 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 		LEFT JOIN users AS moders ON moders.id = c.moderator_id
 		WHERE c.id = ?`,
 		desiredChapterOnModerationID,
-	).Scan(&chapter)
+	).Scan(&chapterOnModeration)
+
+	isChapterNew := chapterOnModeration.Moder == ""
 
 	var response string
 
-	if chapter.Moder == "" {
-		response = fmt.Sprintf(
-			"Причина обращения: создание\nid обращения: %d\n\nГлава для тома %s тайтла %s\n\nНазвание: %s\nОписание: %s\nКоличество страниц: %d\nСоздатель: %s\n\nОтправлена на модерацию:\n%s",
-			chapter.ID, chapter.Volume, chapter.Title, chapter.Name, chapter.Description, chapter.NumberOfPages, chapter.Creator, chapter.CreatedAt.Format(time.DateTime),
-		)
-	} else {
+	if !isChapterNew {
 		response = fmt.Sprintf(
 			"Причина обращения: редактирование\nid главы: %d\nid обращения: %d\n\nГлава для тома %s тайтла %s\n\nНазвание: %s\nОписание: %s\nКоличество страниц: %d\nСоздатель: %s\nПоследний редактировавший модератор: %s\n\nОтпралена на модерацию:\n%s",
-			chapter.ExistingID, chapter.ID, chapter.Volume, chapter.Title, chapter.Name, chapter.Description, chapter.NumberOfPages, chapter.Creator, chapter.Moder, chapter.CreatedAt.Format(time.DateTime),
+			chapterOnModeration.ExistingID, chapterOnModeration.ID, chapterOnModeration.Volume, chapterOnModeration.Title, chapterOnModeration.Name, chapterOnModeration.Description, chapterOnModeration.NumberOfPages, chapterOnModeration.Creator, chapterOnModeration.Moder, chapterOnModeration.CreatedAt.Format(time.DateTime),
 		)
+
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
+
+		response = "Изменения:\n\n"
+
+		var chapter struct {
+			Name        string
+			Description string
+		}
+
+		h.DB.Raw("SELECT name, description FROM chapters WHERE id = ?", chapterOnModeration.ExistingID).Scan(&chapter)
+
+		if chapter.Name != chapterOnModeration.Name {
+			response += fmt.Sprintf("Название с %s на %s", chapter.Name, chapterOnModeration.Name)
+		}
+
+		if chapter.Description != chapterOnModeration.Description {
+			response += fmt.Sprintf("Описание с %s на %s", chapter.Description, chapterOnModeration.Description)
+		}
+
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
+		return
 	}
+
+	response = fmt.Sprintf(
+		"Причина обращения: создание\nid обращения: %d\n\nГлава для тома %s тайтла %s\n\nНазвание: %s\nОписание: %s\nКоличество страниц: %d\nСоздатель: %s\n\nОтправлена на модерацию:\n%s",
+		chapterOnModeration.ID, chapterOnModeration.Volume, chapterOnModeration.Title, chapterOnModeration.Name, chapterOnModeration.Description, chapterOnModeration.NumberOfPages, chapterOnModeration.Creator, chapterOnModeration.CreatedAt.Format(time.DateTime),
+	)
 
 	h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
 
-	filter := bson.M{"chapter_id": chapter.ID}
+	filter := bson.M{"chapter_id": chapterOnModeration.ID}
 
 	var result struct {
 		Pages [][]byte `bson:"pages"`
 	}
 
-	for i := 0; i < chapter.NumberOfPages; i++ {
+	var page tgbotapi.PhotoConfig
+	for i := 0; i < chapterOnModeration.NumberOfPages; i++ {
 		projection := bson.M{"pages": bson.M{"$slice": []int{i, 1}}}
 
 		err := h.ChaptersOnModerationPages.FindOne(context.TODO(), filter, options.FindOne().SetProjection(projection)).Decode(&result)
@@ -91,8 +116,13 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 			return
 		}
 
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, fmt.Sprintf("Страница номер: %d", i+1)))
-		h.Bot.Send(tgbotapi.NewPhoto(tgUserID, tgbotapi.FileBytes{Name: "page", Bytes: result.Pages[0]}))
+		page = tgbotapi.NewPhoto(tgUserID, tgbotapi.FileBytes{
+			Name:  "page",
+			Bytes: result.Pages[0],
+		})
+		page.Caption = fmt.Sprintf("Страница номер %d", i+1)
+
+		h.Bot.Send(page)
 	}
 
 	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Чтобы одобрить главу, вызовите функцию /approve_chapter с указанием id её обращения\n\nЧтобы отвергнуть главу, вызовите функцию /reject_chapter с указанием id её обращения\n\nПримеры:\n/approve_chapter 12\n/reject_chapter 12"))
