@@ -62,8 +62,16 @@ func (h handler) ApproveVolume(update tgbotapi.Update) {
 }
 
 func ConvertToVolume(volumeOnModeration models.VolumeOnModeration, volume *models.Volume) {
-	volume.Name = volumeOnModeration.Name
-	volume.Description = volumeOnModeration.Description
-	volume.TitleID = volumeOnModeration.TitleID
-	volume.CreatorID = volumeOnModeration.CreatorID
+	if volumeOnModeration.Name != "" {
+		volume.Name = volumeOnModeration.Name
+	}
+	if volumeOnModeration.Description != "" {
+		volume.Description = volumeOnModeration.Description
+	}
+	if volumeOnModeration.CreatorID != 0 {
+		volume.CreatorID = volumeOnModeration.CreatorID
+	}
+	if volumeOnModeration.TitleID != 0 {
+		volume.TitleID = volumeOnModeration.TitleID
+	}
 }

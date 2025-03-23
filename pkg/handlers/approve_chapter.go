@@ -109,8 +109,22 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 }
 
 func EditChapter(chapterOnModeration models.ChapterOnModeration, chapter *models.Chapter) {
-	chapter.Name = chapterOnModeration.Name
-	chapter.Description = chapterOnModeration.Description
-	chapter.VolumeID = chapterOnModeration.VolumeID
-	chapter.CreatorID = chapterOnModeration.CreatorID
+	if chapterOnModeration.Name != "" {
+		chapter.Name = chapterOnModeration.Name
+	}
+	if chapterOnModeration.Description != "" {
+		chapter.Description = chapterOnModeration.Description
+	}
+	if chapterOnModeration.NumberOfPages != 0 {
+		chapter.NumberOfPages = chapterOnModeration.NumberOfPages
+	}
+	if chapterOnModeration.VolumeID != 0 {
+		chapter.VolumeID = chapterOnModeration.VolumeID
+	}
+	if chapterOnModeration.CreatorID != 0 {
+		chapter.CreatorID = chapterOnModeration.CreatorID
+	}
+	if chapterOnModeration.VolumeID != 0 {
+		chapter.VolumeID = chapterOnModeration.VolumeID
+	}
 }

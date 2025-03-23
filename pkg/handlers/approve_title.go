@@ -113,11 +113,18 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 }
 
 func ConvertToTitle(titleOnModeration models.TitleOnModeration, title *models.Title) {
-	title.Name = titleOnModeration.Name
-	title.Description = titleOnModeration.Description
-	title.AuthorID = titleOnModeration.AuthorID
-	title.CreatorID = titleOnModeration.CreatorID
-	title.TeamID = titleOnModeration.TeamID
+	if titleOnModeration.Name != "" { // При редактировании неизменённые столбцы будут NULL, а сюда будет возвращаться zero value. На него и проверяю, чтобы изменить только то, что надо
+		title.Name = titleOnModeration.Name
+	}
+	if titleOnModeration.Description != "" {
+		title.Description = titleOnModeration.Description
+	}
+	if titleOnModeration.AuthorID != 0 {
+		title.AuthorID = titleOnModeration.AuthorID
+	}
+	if titleOnModeration.CreatorID != 0 {
+		title.CreatorID = titleOnModeration.CreatorID
+	}
 }
 
 func AddGenresToTitle(titleID uint, genres []string, tx *gorm.DB) error {
