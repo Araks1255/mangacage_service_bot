@@ -82,24 +82,27 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при поиске обложки тайтла"))
 		return
 	}
-	
+
 	titleCover.TitleID = title.ID
-	
-	if _, err = h.TitlesCovers.InsertOne(context.TODO(), titleCover); err != nil {
-		tx.Rollback()
-		log.Println(err)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при вставке обложки тайтла"))
-		return
+	coverUpdate := bson.M{"$set": bson.M{"cover": titleCover.Cover}}
+
+	if err := h.TitlesCovers.FindOneAndUpdate(context.TODO(), filter, coverUpdate); err != nil {
+		if _, err := h.TitlesCovers.InsertOne(context.TODO(), titleCover); err != nil {
+			tx.Rollback()
+			log.Println(err)
+			h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при создании обложки тайтла"))
+			return
+		}
 	}
-	
+
 	tx.Commit()
-	
+
 	if doesTitleExist {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно изменён"))
 	} else {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл успешно создан"))
 	}
-		
+
 	if _, err = h.TitlesOnModerationCovers.DeleteOne(context.TODO(), filter); err != nil {
 		log.Println(err)
 	}
