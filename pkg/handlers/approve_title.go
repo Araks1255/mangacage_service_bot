@@ -86,7 +86,7 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 	titleCover.TitleID = title.ID
 	coverUpdate := bson.M{"$set": bson.M{"cover": titleCover.Cover}}
 
-	if err := h.TitlesCovers.FindOneAndUpdate(context.TODO(), filter, coverUpdate); err != nil {
+	if result := h.TitlesCovers.FindOneAndUpdate(context.TODO(), filter, coverUpdate); result.Err() != nil {
 		if _, err := h.TitlesCovers.InsertOne(context.TODO(), titleCover); err != nil {
 			tx.Rollback()
 			log.Println(err)

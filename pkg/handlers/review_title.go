@@ -44,22 +44,20 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 		Creator     string
 		Moder       string
 		Author      string
-		Team        string
 		Genres      pq.StringArray `gorm:"type:[]TEXT"`
 	}
 
 	h.DB.Raw(
-		`SELECT t.id, t.created_at, t.updated_at, t.deleted_at, t.name, t.description, t.existing_id,
-		users.user_name AS creator, moders.user_name AS moder, authors.name AS author, teams.name AS team, t.genres
+		`SELECT t.id, t.created_at, t.existing_id, t.name, t.description,
+		users.user_name AS creator, moders.user_name AS moder, authors.name AS author, t.genres
 		FROM titles_on_moderation AS t
-		INNER JOIN users ON t.creator_id = users.id
-		LEFT JOIN users AS moders ON t.moderator_id = moders.id 
-		INNER JOIN authors ON t.author_id = authors.id
-		LEFT JOIN teams ON t.team_id = teams.id
+		INNER JOIN users ON users.id = t.creator_id
+		INNER JOIN users AS moders ON moders.id = t.moderator_id
+		LEFT JOIN authors ON authors.id = t.author_id
 		WHERE t.id = ?`, existingTitleOnModerationID,
 	).Scan(&titleOnModeration)
 
-	isTitleNew := titleOnModeration.Moder == ""
+	isTitleNew := titleOnModeration.ExistingID == 0
 
 	var response string
 
@@ -88,22 +86,19 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 		return
 	}
 
-	response = fmt.Sprintf(
-		"Причина обращения: редактирование\nid тайтла: %d\nid обращения: %d\n\nНазвание: %s\nОписание: %s\nСоздатель: %s\nАвтор: %s\nПоследний редактировавший модератор: %s\nЖанры: %s\n\nНа переводе у команды: %s\n\nОтправлен на модерацию:\n%s",
-		titleOnModeration.ExistingID, titleOnModeration.ID, titleOnModeration.Name, titleOnModeration.Description, titleOnModeration.Creator, titleOnModeration.Author, titleOnModeration.Moder, strings.Join(titleOnModeration.Genres, ", "), titleOnModeration.Team, titleOnModeration.CreatedAt.Format(time.DateTime),
-	)
-
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
-
 	var title struct {
+		gorm.Model
 		Name        string
 		Description string
 		Author      string
+		Creator     string
+		Moder       string
+		Team        string
 		Genres      pq.StringArray `gorm:"type:text[]"`
 	}
 
 	h.DB.Raw(
-		`SELECT t.name, t.description, authors.name AS author,
+		`SELECT t.id, t.created_at, t.name, t.description, authors.name AS author, users.user_name AS creator, moders.user_name AS moder, teams.name AS team,
 		(
 		SELECT ARRAY(
 		SELECT genres.name FROM genres
@@ -114,18 +109,26 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 		FROM titles AS t
 		INNER JOIN authors ON authors.id = t.author_id
 		INNER JOIN teams ON teams.id = t.team_id
-		WHERE NOT t.on_moderation
-		AND t.id = ?`, titleOnModeration.ExistingID).Scan(&title)
+		INNER JOIN users ON users.id = t.creator_id
+		INNER JOIN users AS moders ON moders.id = t.moderator_id
+		WHERE t.id = ?`, titleOnModeration.ExistingID).Scan(&title)
+
+	response = fmt.Sprintf(
+		"Причина обращения: редактирование\n\nИнформация о тайтле (на данный момент):\nid: %d\nНазвание: %s\nОписание: %s\nСоздатель: %s\nАвтор: %s\nПоследний редактировавший модератор: %s\nЖанры: %s\n\nНа переводе у команды: %s\n\nСоздан:\n%s",
+		title.ID, title.Name, title.Description, title.Creator, title.Author, title.Moder, strings.Join(title.Genres, ", "), title.Team, title.CreatedAt.Format(time.DateTime),
+	)
+
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
 
 	response = "Изменения:\n\n"
 
-	if title.Name != titleOnModeration.Name {
+	if titleOnModeration.Name != "" {
 		response += fmt.Sprintf("Название с %s на %s\n", title.Name, titleOnModeration.Name)
 	}
-	if title.Description != titleOnModeration.Description {
+	if titleOnModeration.Description != "" {
 		response += fmt.Sprintf("Описание с %s на %s\n", title.Description, titleOnModeration.Description)
 	}
-	if title.Author != titleOnModeration.Author {
+	if titleOnModeration.Author != "" {
 		response += fmt.Sprintf("Автор с %s на %s\n", title.Author, titleOnModeration.Author)
 	}
 
@@ -148,7 +151,7 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 
 	filter = bson.M{"title_id": titleOnModeration.ExistingID}
 
-	if err = h.TitlesCovers.FindOne(context.Background(), filter).Decode(&oldTitleCover); err != nil {
+	if err = h.TitlesCovers.FindOne(context.TODO(), filter).Decode(&oldTitleCover); err != nil {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Старая обложка не найдена"))
 	} else {
 		oldCover := tgbotapi.NewPhoto(tgUserID, tgbotapi.FileBytes{
