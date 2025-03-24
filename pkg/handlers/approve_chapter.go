@@ -90,6 +90,10 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Глава успешно создана"))
 	}
 
+	if _, err := h.ChaptersOnModerationPages.DeleteOne(context.TODO(), filter); err != nil {
+		log.Println(err)
+	}
+
 	conn, err := grpc.NewClient("localhost:9090", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Println(err)
@@ -100,10 +104,6 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 	client := pb.NewNotificationsClient(conn)
 
 	if _, err := client.NotifyAboutReleaseOfNewChapterInTitle(context.Background(), &pb.ReleasedChapter{Name: chapter.Name}); err != nil { // Это брехня а не уведомление. Его надо будет переделать
-		log.Println(err)
-	}
-
-	if _, err := h.ChaptersOnModerationPages.DeleteOne(context.TODO(), filter); err != nil {
 		log.Println(err)
 	}
 }

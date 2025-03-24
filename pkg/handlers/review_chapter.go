@@ -48,25 +48,24 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 	}
 
 	h.DB.Raw(
-		`SELECT c.id, c.created_at, c.updated_at, c.deleted_at, c.name, c.description, c.number_of_pages, c.existing_id,
+		`SELECT c.id, c.created_at, c.name, c.description, c.number_of_pages, c.existing_id,
 		volumes.name AS volume, titles.name AS title, users.user_name AS creator, moders.user_name AS moder
 		FROM chapters_on_moderation AS c
 		INNER JOIN volumes ON c.volume_id = volumes.id
 		INNER JOIN titles ON volumes.title_id = titles.id
-		INNER JOIN users ON users.id =c.creator_id
+		INNER JOIN users ON users.id = c.creator_id
 		LEFT JOIN users AS moders ON moders.id = c.moderator_id
-		WHERE c.id = ?`,
-		desiredChapterOnModerationID,
+		WHERE c.id = ?`, desiredChapterOnModerationID,
 	).Scan(&chapterOnModeration)
 
-	isChapterNew := chapterOnModeration.Moder == ""
+	isChapterNew := chapterOnModeration.ExistingID == 0
 
 	var response string
 
 	if !isChapterNew {
 		response = fmt.Sprintf(
-			"Причина обращения: редактирование\nid главы: %d\nid обращения: %d\n\nГлава для тома %s тайтла %s\n\nНазвание: %s\nОписание: %s\nКоличество страниц: %d\nСоздатель: %s\nПоследний редактировавший модератор: %s\n\nОтпралена на модерацию:\n%s",
-			chapterOnModeration.ExistingID, chapterOnModeration.ID, chapterOnModeration.Volume, chapterOnModeration.Title, chapterOnModeration.Name, chapterOnModeration.Description, chapterOnModeration.NumberOfPages, chapterOnModeration.Creator, chapterOnModeration.Moder, chapterOnModeration.CreatedAt.Format(time.DateTime),
+			"Причина обращения: редактирование\nid главы: %d\nid обращения: %d\nГлава для тома %s тайтла %s\n\nИзменения:\n Название: %s\n Описание: %s\n\nВнёс изменения: %s\nПоследний редактировавший модератор: %s\n\nОтпралена на модерацию:\n%s",
+			chapterOnModeration.ExistingID, chapterOnModeration.ID, chapterOnModeration.Volume, chapterOnModeration.Title, chapterOnModeration.Name, chapterOnModeration.Description, chapterOnModeration.Creator, chapterOnModeration.Moder, chapterOnModeration.CreatedAt.Format(time.DateTime),
 		)
 
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
@@ -80,11 +79,11 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 
 		h.DB.Raw("SELECT name, description FROM chapters WHERE id = ?", chapterOnModeration.ExistingID).Scan(&chapter)
 
-		if chapter.Name != chapterOnModeration.Name {
-			response += fmt.Sprintf("Название с %s на %s", chapter.Name, chapterOnModeration.Name)
+		if chapterOnModeration.Name != "" {
+			response += fmt.Sprintf("Название с %s на %s\n", chapter.Name, chapterOnModeration.Name)
 		}
 
-		if chapter.Description != chapterOnModeration.Description {
+		if chapterOnModeration.Description != "" {
 			response += fmt.Sprintf("Описание с %s на %s", chapter.Description, chapterOnModeration.Description)
 		}
 

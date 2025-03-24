@@ -83,6 +83,7 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 		cover.Caption = response
 
 		h.Bot.Send(cover)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Чтобы одобрить тайтл, вызовите команду approve_title с указанием id его обращения\nЧтобы отклонить обращение на модерацию тайтла, вызовите команду reject_title с указанием id его обращения\n\nПримеры:\n/approve_title 2\n/reject_title 2"))
 		return
 	}
 
@@ -169,4 +170,6 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 	newCover.Caption = "Новая обложка"
 
 	h.Bot.Send(newCover)
+
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Чтобы одобрить тайтл, выз"))
 }
