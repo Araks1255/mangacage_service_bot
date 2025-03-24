@@ -97,6 +97,9 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 			case "review_title":
 				go h.ReviewTitle(update)
 
+			case "review_volume":
+				go h.ReviewVolume(update)
+
 			case "approve_chapter":
 				go h.ApproveChapter(update)
 

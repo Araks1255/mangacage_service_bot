@@ -94,6 +94,10 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 		log.Println(err)
 	}
 
+	if result := h.DB.Exec("DELETE FROM chapters_on_moderation WHERE id = ?", chapterOnModeration.ID); result.Error != nil {
+		log.Println(result.Error)
+	}
+
 	conn, err := grpc.NewClient("localhost:9090", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Println(err)

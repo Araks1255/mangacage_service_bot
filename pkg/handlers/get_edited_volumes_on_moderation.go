@@ -28,11 +28,11 @@ func (h handler) GetEditedVolumesOnModeration(update tgbotapi.Update) {
 
 	var volumes []editedVolume
 	h.DB.Raw(
-		`SELECT v.id, v.created_at, v.updated_at, v.deleted_at, v.name, v.description, v.existing_id,
+		`SELECT v.id, v.created_at, v.name, v.description, v.existing_id,
 		titles.name AS title, users.user_name AS creator, moders.user_name AS moder FROM volumes_on_moderation AS v
 		INNER JOIN titles ON titles.id = v.title_id
 		INNER JOIN users ON users.id = v.creator_id
-		INNER JOIN users AS moders ON moders.id = v.moderator_id`,
+		LEFT JOIN users AS moders ON moders.id = v.moderator_id`,
 	).Scan(&volumes)
 
 	if len(volumes) == 0 {
@@ -47,12 +47,12 @@ func (h handler) GetEditedVolumesOnModeration(update tgbotapi.Update) {
 
 	for i := 0; i < len(volumes); i++ {
 		response = fmt.Sprintf(
-			"id тома: %d\nid обращения: %d\n\nНазвание: %s\nОписание: %s\nТайтл: %s\nСоздатель: %s\nПоследний редактировавший модератор: %s\n\nОтправлен на модерацию:\n%s",
-			volumes[i].ExistingID, volumes[i].ID, volumes[i].Name, volumes[i].Description, volumes[i].Title, volumes[i].Creator, volumes[i].Moder, volumes[i].CreatedAt.Format(time.DateTime),
+			"id тома: %d\nid обращения: %d\nТайтл: %s\n\nИзменения:\n Название: %s\n Описание: %s\n\nВнёс изменения: %s\nПоследний редактировавший модератор: %s\n\nОтправлен на модерацию:\n%s",
+			volumes[i].ExistingID, volumes[i].ID, volumes[i].Title, volumes[i].Name, volumes[i].Description, volumes[i].Creator, volumes[i].Moder, volumes[i].CreatedAt.Format(time.DateTime),
 		)
 		msg = tgbotapi.NewMessage(tgUserID, response)
 		h.Bot.Send(msg)
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Чтобы просмотреть изменения в томе, укажите его id обращения после вызова команды review_volume_changes\n\nПример: /review_volume_changes 2"))
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Чтобы подробнее рассмотреть изменения в томе, укажите его id обращения после вызова команды review_volume\n\nПример: /review_volume 2"))
 }

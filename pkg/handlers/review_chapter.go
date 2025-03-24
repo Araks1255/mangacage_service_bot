@@ -70,8 +70,6 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
 
-		response = "Изменения:\n\n"
-
 		var chapter struct {
 			Name        string
 			Description string
@@ -79,12 +77,14 @@ func (h handler) ReviewChapter(update tgbotapi.Update) {
 
 		h.DB.Raw("SELECT name, description FROM chapters WHERE id = ?", chapterOnModeration.ExistingID).Scan(&chapter)
 
+		response = "Изменения:\n\n"
+
 		if chapterOnModeration.Name != "" {
-			response += fmt.Sprintf("Название с %s на %s\n", chapter.Name, chapterOnModeration.Name)
+			response += fmt.Sprintf("Название с \"%s\" на \"%s\"\n", chapter.Name, chapterOnModeration.Name)
 		}
 
 		if chapterOnModeration.Description != "" {
-			response += fmt.Sprintf("Описание с %s на %s", chapter.Description, chapterOnModeration.Description)
+			response += fmt.Sprintf("Описание с \"%s\" на \"%s\"", chapter.Description, chapterOnModeration.Description)
 		}
 
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))

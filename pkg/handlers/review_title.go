@@ -124,17 +124,17 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 	response = "Изменения:\n\n"
 
 	if titleOnModeration.Name != "" {
-		response += fmt.Sprintf("Название с %s на %s\n", title.Name, titleOnModeration.Name)
+		response += fmt.Sprintf("Название с \"%s\" на \"%s\"\n", title.Name, titleOnModeration.Name)
 	}
 	if titleOnModeration.Description != "" {
-		response += fmt.Sprintf("Описание с %s на %s\n", title.Description, titleOnModeration.Description)
+		response += fmt.Sprintf("Описание с \"%s\" на \"%s\"\n", title.Description, titleOnModeration.Description)
 	}
 	if titleOnModeration.Author != "" {
-		response += fmt.Sprintf("Автор с %s на %s\n", title.Author, titleOnModeration.Author)
+		response += fmt.Sprintf("Автор с \"%s\" на \"%s\"\n", title.Author, titleOnModeration.Author)
 	}
 
 	if len(titleOnModeration.Genres) != 0 { // По задумке, если изменений нет, то будет ничего писаться, следовательно длина этого слайса будет 0
-		response += fmt.Sprintf("Жанры с %s на %s\n", strings.Join(title.Genres, ", "), strings.Join(titleOnModeration.Genres, ", "))
+		response += fmt.Sprintf("Жанры с \"%s\" на \"%s\"\n", strings.Join(title.Genres, ", "), strings.Join(titleOnModeration.Genres, ", "))
 	}
 
 	h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
