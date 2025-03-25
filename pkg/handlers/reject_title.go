@@ -1,9 +1,10 @@
 package handlers
 
 import (
+	"context"
+	"database/sql"
 	"log"
 	"strconv"
-	"context"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"go.mongodb.org/mongo-driver/bson"
@@ -24,25 +25,45 @@ func (h handler) RejectTitle(update tgbotapi.Update) {
 		return
 	}
 
-	var existingTitleOnModerationID uint
-	h.DB.Raw("SELECT id FROM titles_on_moderation WHERE id = ?", desiredTitleOnModerationID).Scan(&existingTitleOnModerationID)
-	if existingTitleOnModerationID == 0 {
+	tx := h.DB.Begin()
+	if r := recover(); r != nil {
+		tx.Rollback()
+		panic(r)
+	}
+	defer tx.Rollback()
+
+	var titleID, titleOnModerationID sql.NullInt64
+
+	row := tx.Raw("SELECT existing_id, id FROM titles_on_moderation WHERE id = ?", desiredTitleOnModerationID).Row()
+
+	if err := row.Scan(&titleID, &titleOnModerationID); err != nil {
+		log.Println(err)
+	}
+
+	if !titleID.Valid && !titleOnModerationID.Valid {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тайтл не найден"))
 		return
 	}
 
-	if result := h.DB.Exec("DELETE FROM titles_on_moderation CASCADE WHERE id = ?", existingTitleOnModerationID); result.Error != nil {
+	if result := tx.Exec("DELETE FROM titles_on_moderation WHERE id = ?", titleOnModerationID.Int64); result.Error != nil {
 		log.Println(result.Error)
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить тайтл"))
 		return
 	}
 
-	filter := bson.M{"title_id":existingTitleOnModerationID}
+	var filter bson.M
+	if titleID.Valid {
+		filter = bson.M{"title_id": titleID.Int64}
+	} else {
+		filter = bson.M{"title_on_moderation_id": titleOnModerationID.Int64}
+	}
 
 	if _, err = h.TitlesOnModerationCovers.DeleteOne(context.TODO(), filter); err != nil {
 		log.Println(err)
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить обложку тайтла (если тайтл ожидал редактирования и обложка не была изменена, то её и не было)"))
 	}
+
+	tx.Commit()
 
 	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Обращение на модерацию успешно отклонено"))
 }
