@@ -52,7 +52,7 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 		users.user_name AS creator, moders.user_name AS moder, authors.name AS author, t.genres
 		FROM titles_on_moderation AS t
 		INNER JOIN users ON users.id = t.creator_id
-		INNER JOIN users AS moders ON moders.id = t.moderator_id
+		LEFT JOIN users AS moders ON moders.id = t.moderator_id
 		LEFT JOIN authors ON authors.id = t.author_id
 		WHERE t.id = ?`, existingTitleOnModerationID,
 	).Scan(&titleOnModeration)
@@ -69,7 +69,7 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 
 		var titleCover TitleCover
 
-		filter := bson.M{"title_id": existingTitleOnModerationID}
+		filter := bson.M{"title_on_moderation_id": titleOnModeration.ID}
 
 		if err := h.TitlesOnModerationCovers.FindOne(context.Background(), filter).Decode(&titleCover); err != nil {
 			log.Println(err)
@@ -115,8 +115,8 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 		WHERE t.id = ?`, titleOnModeration.ExistingID).Scan(&title)
 
 	response = fmt.Sprintf(
-		"Причина обращения: редактирование\n\nИнформация о тайтле (на данный момент):\nid: %d\nНазвание: %s\nОписание: %s\nСоздатель: %s\nАвтор: %s\nПоследний редактировавший модератор: %s\nЖанры: %s\n\nНа переводе у команды: %s\n\nСоздан:\n%s",
-		title.ID, title.Name, title.Description, title.Creator, title.Author, title.Moder, strings.Join(title.Genres, ", "), title.Team, title.CreatedAt.Format(time.DateTime),
+		"Причина обращения: редактирование\nid обращения: %d\n\nИнформация о тайтле (на данный момент):\nid: %d\nНазвание: %s\nОписание: %s\nСоздатель: %s\nАвтор: %s\nПоследний редактировавший модератор: %s\nЖанры: %s\n\nНа переводе у команды: %s\n\nСоздан:\n%s",
+		titleOnModeration.ID, title.ID, title.Name, title.Description, title.Creator, title.Author, title.Moder, strings.Join(title.Genres, ", "), title.Team, title.CreatedAt.Format(time.DateTime),
 	)
 
 	h.Bot.Send(tgbotapi.NewMessage(tgUserID, response))
@@ -141,7 +141,7 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 
 	var newTitleCover TitleCover
 
-	filter := bson.M{"title_id": titleOnModeration.ID}
+	filter := bson.M{"title_id": title.ID} // Фильтр один, потому-что новая и старая обложки храняться в разных коллекциях, но с одним айди тайтла (настоящего)
 
 	if err := h.TitlesOnModerationCovers.FindOne(context.Background(), filter).Decode(&newTitleCover); err != nil {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Обложка не обновлена"))
@@ -149,8 +149,6 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 	}
 
 	var oldTitleCover TitleCover
-
-	filter = bson.M{"title_id": titleOnModeration.ExistingID}
 
 	if err = h.TitlesCovers.FindOne(context.TODO(), filter).Decode(&oldTitleCover); err != nil {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Старая обложка не найдена"))

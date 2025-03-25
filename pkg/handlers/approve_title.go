@@ -10,6 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/lib/pq"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"gorm.io/gorm"
 )
 
@@ -41,7 +42,7 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 	}
 
 	var title models.Title
-	h.DB.Raw("SELECT * FROM titles WHERE id = ?", titleOnModeration.ExistingID).Scan(&title)
+	h.DB.Raw("SELECT * FROM titles WHERE id = ?", titleOnModeration.ExistingID.Int64).Scan(&title)
 
 	doesTitleExist := title.ID != 0
 
@@ -50,7 +51,7 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 
 	tx := h.DB.Begin()
 
-	if title.ID != 0 {
+	if doesTitleExist {
 		if result := tx.Exec("DELETE FROM title_genres WHERE title_id = ?", title.ID); result.Error != nil {
 			tx.Rollback()
 			log.Println(result.Error)
@@ -75,7 +76,13 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 
 	var titleCover TitleCover
 
-	filter := bson.M{"title_id": titleOnModerationID}
+	var filter bson.M
+	if doesTitleExist {
+		filter = bson.M{"title_id": title.ID}
+	} else {
+		filter = bson.M{"title_on_moderation_id": titleOnModeration.ID}
+	}
+
 	if err = h.TitlesOnModerationCovers.FindOne(context.TODO(), filter).Decode(&titleCover); err != nil {
 		tx.Rollback()
 		log.Println(err)
@@ -83,16 +90,15 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 		return
 	}
 
-	titleCover.TitleID = title.ID
+	filter = bson.M{"title_id": title.ID}
 	coverUpdate := bson.M{"$set": bson.M{"cover": titleCover.Cover}}
+	opts := options.Update().SetUpsert(true)
 
-	if result := h.TitlesCovers.FindOneAndUpdate(context.TODO(), filter, coverUpdate); result.Err() != nil {
-		if _, err := h.TitlesCovers.InsertOne(context.TODO(), titleCover); err != nil {
-			tx.Rollback()
-			log.Println(err)
-			h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при создании обложки тайтла"))
-			return
-		}
+	if _, err := h.TitlesCovers.UpdateOne(context.TODO(), filter, coverUpdate, opts); err != nil {
+		tx.Rollback()
+		log.Println(err)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при создании обложки тайтла"))
+		return
 	}
 
 	tx.Commit()

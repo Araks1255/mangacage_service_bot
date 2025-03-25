@@ -29,6 +29,15 @@ func MongoInit(mongoUrl string) (*mongo.Client, error) {
 	collection := db.Collection("titles_on_moderation_covers")
 
 	indexModel := mongo.IndexModel{
+		Keys:    bson.M{"title_on_moderation_id": 1},
+		Options: options.Index().SetUnique(true),
+	}
+
+	if _, err = collection.Indexes().CreateOne(context.TODO(), indexModel); err != nil {
+		log.Println(err)
+	}
+
+	indexModel = mongo.IndexModel{
 		Keys:    bson.M{"title_id": 1},
 		Options: options.Index().SetUnique(true),
 	}
