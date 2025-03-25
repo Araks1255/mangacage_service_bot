@@ -107,8 +107,10 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 
 	client := pb.NewNotificationsClient(conn)
 
-	if _, err := client.NotifyAboutReleaseOfNewChapterInTitle(context.Background(), &pb.ReleasedChapter{Name: chapter.Name}); err != nil { // Это брехня а не уведомление. Его надо будет переделать
-		log.Println(err)
+	if !doesChapterExist {
+		if _, err := client.NotifyAboutReleaseOfNewChapterInTitle(context.TODO(), &pb.ReleasedChapter{ID: uint32(chapter.ID)}); err != nil {
+			log.Println(err)
+		}
 	}
 }
 
