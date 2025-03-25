@@ -25,7 +25,7 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 
 	desiredTitleOnModerationID, err := strconv.Atoi(update.Message.CommandArguments())
 	if err != nil {
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите айди обращения тайтла, который хотите рассмотреть, после вызова функции\n\nПример: /review_title 2"))
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Введите айди обращения тайтла, который хотите рассмотреть, после вызова команды\n\nПример: /review_title 2"))
 		return
 	}
 
@@ -171,5 +171,5 @@ func (h handler) ReviewTitle(update tgbotapi.Update) {
 
 	h.Bot.Send(newCover)
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Чтобы одобрить тайтл, выз"))
+	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Тут будут инструкции по одобрению и отмене"))
 }

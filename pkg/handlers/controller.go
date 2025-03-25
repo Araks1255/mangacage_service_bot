@@ -10,13 +10,19 @@ import (
 )
 
 type handler struct {
-	Bot                       *tgbotapi.BotAPI
-	DB                        *gorm.DB
-	TitlesOnModerationCovers  *mongo.Collection
-	TitlesCovers              *mongo.Collection
+	Bot *tgbotapi.BotAPI
+	DB  *gorm.DB
+
+	TitlesOnModerationCovers *mongo.Collection
+	TitlesCovers             *mongo.Collection
+
 	ChaptersOnModerationPages *mongo.Collection
 	ChaptersPages             *mongo.Collection
-	AllowedUsers              map[int64]uint
+
+	UsersOnModerationProfilePictures *mongo.Collection
+	UsersProfilePictures             *mongo.Collection
+
+	AllowedUsers map[int64]uint
 }
 
 func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
@@ -24,15 +30,20 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 	titlesCovers := client.Database("mangacage").Collection("titles_covers")
 
 	chaptersOnModerationPages := client.Database("mangacage").Collection("chapters_on_moderation_pages")
-	chaptersPagesCollection := client.Database("mangacage").Collection("chapters_pages")
+	chaptersPages := client.Database("mangacage").Collection("chapters_pages")
+
+	usersOnModerationProfilePictures := client.Database("mangacage").Collection("users_on_moderation_profile_pictures")
+	usersProfilePictures := client.Database("mangacage").Collection("users_profile_pictures")
 
 	h := handler{
-		Bot:                       bot,
-		DB:                        db,
-		TitlesOnModerationCovers:  titlesOnModerationCovers,
-		TitlesCovers:              titlesCovers,
-		ChaptersOnModerationPages: chaptersOnModerationPages,
-		ChaptersPages:             chaptersPagesCollection,
+		Bot:                              bot,
+		DB:                               db,
+		TitlesOnModerationCovers:         titlesOnModerationCovers,
+		TitlesCovers:                     titlesCovers,
+		ChaptersOnModerationPages:        chaptersOnModerationPages,
+		ChaptersPages:                    chaptersPages,
+		UsersOnModerationProfilePictures: usersOnModerationProfilePictures,
+		UsersProfilePictures:             usersProfilePictures,
 	}
 
 	h.AllowedUsers = make(map[int64]uint, 10)
@@ -79,6 +90,9 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 			case "get_new_volumes_on_moderation":
 				go h.GetNewVolumesOnModeration(update)
 
+			case "get_new_users_on_moderation":
+				go h.GetNewUsersOnModeration(update)
+
 			case "get_edited_volumes_on_moderation":
 				go h.GetEditedVolumesOnModeration(update)
 
@@ -87,6 +101,9 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 
 			case "get_edited_chapters_on_moderation":
 				go h.GetEditedChaptersOnModeration(update)
+
+			case "get_edited_users_on_moderation":
+				go h.GetEditedUsersOnModeration(update)
 
 			case "approve_title":
 				go h.ApproveTitle(update)
@@ -99,6 +116,9 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 
 			case "review_volume":
 				go h.ReviewVolume(update)
+
+			case "review_user":
+				go h.ReviewUser(update)
 
 			case "approve_chapter":
 				go h.ApproveChapter(update)
