@@ -55,5 +55,5 @@ MangaCage Service Bot — это телеграм-бот, предназначе
 
 Если у вас есть вопросы, предложения или вы нашли ошибку, пожалуйста, свяжитесь со мной:
 
-- Через [GitHub Issues](https://github.com/Araks1255/mangacage/issues)
+- Через [GitHub Issues](https://github.com/Araks1255/mangacage_service_bot/issues)
 - Через Telegram: [@Araks4621](https://t.me/Araks4621)
