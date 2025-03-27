@@ -45,7 +45,7 @@ MangaCage Service Bot — это телеграм-бот, предназначе
 - **PostgreSQL** — для хранения данных о тайтлах, томах, главах и пользователях.
 - **MongoDB** — для хранения больших бинарных данных (например, обложек и страниц).
 - **Telegram Bot API** — для взаимодействия с пользователями через Telegram.
-- **[go-telegram-bot-api](https://github.com/go-telegram-bot-api/telegram-bot-api/v5)** — библиотека для работы с Telegram Bot API.
+- **[go-telegram-bot-api](https://github.com/go-telegram-bot-api/telegram-bot-api)** — библиотека для работы с Telegram Bot API.
 
 ## Планы на будущее
 
