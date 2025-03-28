@@ -32,7 +32,8 @@ func (h handler) GetEditedVolumesOnModeration(update tgbotapi.Update) {
 		titles.name AS title, users.user_name AS creator, moders.user_name AS moder FROM volumes_on_moderation AS v
 		INNER JOIN titles ON titles.id = v.title_id
 		INNER JOIN users ON users.id = v.creator_id
-		LEFT JOIN users AS moders ON moders.id = v.moderator_id`,
+		LEFT JOIN users AS moders ON moders.id = v.moderator_id
+		WHERE v.existing_id IS NOT NULL`,
 	).Scan(&volumes)
 
 	if len(volumes) == 0 {

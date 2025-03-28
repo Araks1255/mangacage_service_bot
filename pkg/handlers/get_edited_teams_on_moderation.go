@@ -29,7 +29,7 @@ func (h handler) GetEditedTeamsOnModeration(update tgbotapi.Update) {
 		teams.name AS existing, users.user_name AS creator
 		FROM teams_on_moderation AS t
 		INNER JOIN teams ON teams.id = t.existing_id
-		INNER JOIN users ON users.id = t.creator_id`,
+		INNER JOIN users ON users.id = t.creator_id`, // Тут идёт INNER JOIN по existing_id, что гарантирует, что выберутся только те записи, где он не NULL (то есть, имеющие оригинал, ожидающие подтверждения редактирования)
 	).Scan(&teams)
 
 	if len(teams) == 0 {

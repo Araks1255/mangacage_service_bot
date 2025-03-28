@@ -27,7 +27,7 @@ func (h handler) GetEditedUsersOnModeration(update tgbotapi.Update) {
 		`SELECT u.id, u.created_at, u.user_name, u.about_yourself,
 		users.user_name AS existing_user_name
 		FROM users_on_moderation AS u
-		INNER JOIN users ON users.id = u.existing_id`,
+		INNER JOIN users ON users.id = u.existing_id`, // Тут INNER JOIN по existing_id, обеспечивающий выборку только записей с редактированием
 	).Scan(&editedUsers)
 
 	if len(editedUsers) == 0 {
