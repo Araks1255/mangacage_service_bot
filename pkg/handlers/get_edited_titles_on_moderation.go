@@ -36,7 +36,7 @@ func (h handler) GetEditedTitlesOnModeration(update tgbotapi.Update) {
 		FROM titles_on_moderation AS t
 		INNER JOIN users ON users.id = t.creator_id
 		INNER JOIN users AS moders ON moders.id = t.moderator_id
-		LEFT JOIN authors ON authors.id = t.author_id`,
+		LEFT JOIN authors ON authors.id = t.author_id`, // Это хрень, переделать
 	).Scan(&titles)
 
 	if len(titles) == 0 {

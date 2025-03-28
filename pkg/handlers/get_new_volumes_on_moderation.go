@@ -25,10 +25,12 @@ func (h handler) GetNewVolumesOnModeration(update tgbotapi.Update) {
 	}
 
 	var volumes []volume
-	h.DB.Raw(`SELECT v.id, v.created_at, v.updated_at, v.deleted_at, v.name, v.description,
+	h.DB.Raw(
+		`SELECT v.id, v.created_at, v.updated_at, v.deleted_at, v.name, v.description,
 		titles.name AS title, users.user_name AS creator FROM volumes_on_moderation as v
 		INNER JOIN titles ON v.title_id = titles.id
-		INNER JOIN users ON v.creator_id = users.id`,
+		INNER JOIN users ON v.creator_id = users.id
+		WHERE v.existing_id IS NULL`,
 	).Scan(&volumes)
 
 	if len(volumes) == 0 {

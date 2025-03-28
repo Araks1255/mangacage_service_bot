@@ -34,7 +34,7 @@ func (h handler) GetNewTitlesOnModeration(update tgbotapi.Update) {
 		FROM titles_on_moderation AS t
 		INNER JOIN users ON t.creator_id = users.id
 		INNER JOIN authors ON t.author_id = authors.id
-		WHERE t.moderator_id IS NULL`,
+		WHERE t.existing_id IS NULL`, // Это хрень с айди модератора
 	).Scan(&titles)
 
 	if len(titles) == 0 {

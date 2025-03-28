@@ -33,7 +33,7 @@ func (h handler) GetNewChaptersOnModeration(update tgbotapi.Update) {
 		INNER JOIN volumes ON volumes.id = c.volume_id
 		INNER JOIN titles ON titles.id = volumes.title_id
 		INNER JOIN users ON users.id = c.creator_id
-		WHERE c.moderator_id IS NULL`,
+		WHERE c.existing_id IS NULL`,
 	).Scan(&chapters)
 
 	if len(chapters) == 0 {
