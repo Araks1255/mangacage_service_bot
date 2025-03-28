@@ -26,10 +26,12 @@ func (h handler) RejectTitle(update tgbotapi.Update) {
 	}
 
 	tx := h.DB.Begin()
-	if r := recover(); r != nil {
-		tx.Rollback()
-		panic(r)
-	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
 	defer tx.Rollback()
 
 	var titleID, titleOnModerationID sql.NullInt64

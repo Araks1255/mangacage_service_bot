@@ -24,25 +24,49 @@ func (h handler) RejectChapter(update tgbotapi.Update) {
 		return
 	}
 
-	var existingChapterOnModerationID uint
-	h.DB.Raw("SELECT id FROM chapters_on_moderation WHERE id = ?", desiredChapterOnModerationID).Scan(&existingChapterOnModerationID)
-	if existingChapterOnModerationID == 0 {
+	tx := h.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+	defer tx.Rollback()
+
+	var ChapterOnModerationID, chapterID uint
+	row := h.DB.Raw("SELECT id, existing_id FROM chapters_on_moderation WHERE id = ?", desiredChapterOnModerationID).Row()
+
+	if err := row.Scan(&ChapterOnModerationID, chapterID); err != nil {
+		log.Println(err)
+	}
+
+	if ChapterOnModerationID == 0 {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Глава не найдена"))
 		return
 	}
 
-	if result := h.DB.Exec("DELETE FROM chapters_on_moderation CASCADE WHERE id = ?", existingChapterOnModerationID); result.Error != nil {
+	doesChapterExist := chapterID != 0
+
+	if result := h.DB.Exec("DELETE FROM chapters_on_moderation WHERE id = ?", ChapterOnModerationID); result.Error != nil {
 		log.Println(result.Error)
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить главу"))
 		return
 	}
 
-	filter := bson.M{"chapter_id": existingChapterOnModerationID}
-
-	if _, err = h.ChaptersOnModerationPages.DeleteOne(context.TODO(), filter); err != nil {
-		log.Println(err)
-		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить страницы главы (если глава ожидала подтверждения редактирования, то их и не было)"))
+	if !doesChapterExist {
+		filter := bson.M{"chapter_id": ChapterOnModerationID}
+		if _, err = h.ChaptersOnModerationPages.DeleteOne(context.TODO(), filter); err != nil {
+			log.Println(err)
+			h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Не удалось удалить страницы главы"))
+			return
+		}
 	}
 
-	h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Обращение на модерацию успешно отклонено"))
+	tx.Commit()
+
+	if !doesChapterExist {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Обращение на модерацию новой главы успешно отклонено"))
+	} else {
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Обращение на модерацию для редактирования главы успешно отклонено"))
+	}
 }

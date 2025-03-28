@@ -34,22 +34,29 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 		return
 	}
 
+	tx := h.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
 	var titleOnModeration models.TitleOnModeration
-	h.DB.Raw("SELECT * FROM titles_on_moderation WHERE id = ?", titleOnModerationID).Scan(&titleOnModeration)
+	tx.Raw("SELECT * FROM titles_on_moderation WHERE id = ?", titleOnModerationID).Scan(&titleOnModeration)
 	if titleOnModeration.ID == 0 {
+		tx.Rollback()
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "На модерации нет тайтла с таким id обращения"))
 		return
 	}
 
 	var title models.Title
-	h.DB.Raw("SELECT * FROM titles WHERE id = ?", titleOnModeration.ExistingID.Int64).Scan(&title)
+	tx.Raw("SELECT * FROM titles WHERE id = ?", titleOnModeration.ExistingID.Int64).Scan(&title)
 
 	doesTitleExist := title.ID != 0
 
 	ConvertToTitle(titleOnModeration, &title)
 	title.ModeratorID = sql.NullInt64{Int64: int64(userID), Valid: true}
-
-	tx := h.DB.Begin()
 
 	if doesTitleExist {
 		if result := tx.Exec("DELETE FROM title_genres WHERE title_id = ?", title.ID); result.Error != nil {

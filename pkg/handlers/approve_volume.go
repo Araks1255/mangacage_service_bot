@@ -24,22 +24,29 @@ func (h handler) ApproveVolume(update tgbotapi.Update) {
 		return
 	}
 
+	tx := h.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
 	var volumeOnModeration models.VolumeOnModeration
-	h.DB.Raw("SELECT * FROM volumes_on_moderation WHERE id = ?", volumeOnModerationID).Scan(&volumeOnModeration)
+	tx.Raw("SELECT * FROM volumes_on_moderation WHERE id = ?", volumeOnModerationID).Scan(&volumeOnModeration)
 	if volumeOnModeration.ID == 0 {
+		tx.Rollback()
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "На модерации нет тома с таким id обращения"))
 		return
 	}
 
 	var volume models.Volume
-	h.DB.Raw("SELECT * FROM volumes WHERE id = ?", volumeOnModeration.ExistingID).Scan(&volume)
+	tx.Raw("SELECT * FROM volumes WHERE id = ?", volumeOnModeration.ExistingID).Scan(&volume)
 
 	doesVolumeExist := volume.ID != 0
 
 	ConvertToVolume(volumeOnModeration, &volume)
 	volume.ModeratorID = sql.NullInt64{Int64: int64(userID), Valid: true}
-
-	tx := h.DB.Begin()
 
 	if result := tx.Save(&volume); result.Error != nil {
 		tx.Rollback()

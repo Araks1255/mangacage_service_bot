@@ -34,22 +34,29 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 		return
 	}
 
+	tx := h.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
 	var chapterOnModeration models.ChapterOnModeration
-	h.DB.Raw("SELECT * FROM chapters_on_moderation WHERE id = ?", chapterOnModerationID).Scan(&chapterOnModeration)
+	tx.Raw("SELECT * FROM chapters_on_moderation WHERE id = ?", chapterOnModerationID).Scan(&chapterOnModeration)
 	if chapterOnModeration.ID == 0 {
+		tx.Rollback()
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "На модерации нет главы с таким id обращения"))
 		return
 	}
 
 	var chapter models.Chapter
-	h.DB.Raw("SELECT * FROM chapters WHERE id = ?", chapterOnModeration.ExistingID).Scan(&chapter)
+	tx.Raw("SELECT * FROM chapters WHERE id = ?", chapterOnModeration.ExistingID).Scan(&chapter)
 
 	doesChapterExist := chapter.ID != 0
 
 	EditChapter(chapterOnModeration, &chapter)
 	chapter.ModeratorID = sql.NullInt64{Int64: int64(userID), Valid: true}
-
-	tx := h.DB.Begin()
 
 	if result := tx.Save(&chapter); result.Error != nil {
 		tx.Rollback()
