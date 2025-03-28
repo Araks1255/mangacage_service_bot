@@ -131,13 +131,13 @@ func EditChapter(chapterOnModeration models.ChapterOnModeration, chapter *models
 	if chapterOnModeration.NumberOfPages != 0 {
 		chapter.NumberOfPages = chapterOnModeration.NumberOfPages
 	}
-	if chapterOnModeration.VolumeID != 0 {
-		chapter.VolumeID = chapterOnModeration.VolumeID
+	if chapterOnModeration.VolumeID.Int64 != 0 {
+		chapter.VolumeID = uint(chapterOnModeration.VolumeID.Int64)
 	}
 	if chapterOnModeration.CreatorID != 0 {
 		chapter.CreatorID = chapterOnModeration.CreatorID
 	}
-	if chapterOnModeration.VolumeID != 0 {
-		chapter.VolumeID = chapterOnModeration.VolumeID
+	if chapterOnModeration.VolumeID.Int64 != 0 {
+		chapter.VolumeID = uint(chapterOnModeration.VolumeID.Int64)
 	}
 }

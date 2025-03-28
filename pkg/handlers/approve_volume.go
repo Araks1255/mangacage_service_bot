@@ -78,7 +78,7 @@ func ConvertToVolume(volumeOnModeration models.VolumeOnModeration, volume *model
 	if volumeOnModeration.CreatorID != 0 {
 		volume.CreatorID = volumeOnModeration.CreatorID
 	}
-	if volumeOnModeration.TitleID != 0 {
-		volume.TitleID = volumeOnModeration.TitleID
+	if volumeOnModeration.TitleID.Int64 != 0 {
+		volume.TitleID = uint(volumeOnModeration.TitleID.Int64)
 	}
 }

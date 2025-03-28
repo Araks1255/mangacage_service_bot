@@ -132,8 +132,8 @@ func ConvertToTitle(titleOnModeration models.TitleOnModeration, title *models.Ti
 	if titleOnModeration.Description != "" {
 		title.Description = titleOnModeration.Description
 	}
-	if titleOnModeration.AuthorID != 0 {
-		title.AuthorID = titleOnModeration.AuthorID
+	if titleOnModeration.AuthorID.Int64 != 0 {
+		title.AuthorID = uint(titleOnModeration.AuthorID.Int64)
 	}
 	if titleOnModeration.CreatorID != 0 {
 		title.CreatorID = titleOnModeration.CreatorID

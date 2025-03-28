@@ -99,8 +99,8 @@ func (h handler) ApproveUser(update tgbotapi.Update) {
 }
 
 func editUser(userOnModeration models.UserOnModeration, user *models.User) {
-	if userOnModeration.UserName != "" {
-		user.UserName = userOnModeration.UserName
+	if userOnModeration.UserName.String != "" {
+		user.UserName = userOnModeration.UserName.String
 	}
 	if userOnModeration.AboutYourself != "" {
 		user.AboutYourself = userOnModeration.AboutYourself
