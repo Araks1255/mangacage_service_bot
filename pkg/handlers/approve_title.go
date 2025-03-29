@@ -118,6 +118,7 @@ func (h handler) ApproveTitle(update tgbotapi.Update) {
 
 	if _, err = h.TitlesOnModerationCovers.DeleteOne(context.TODO(), filter); err != nil {
 		log.Println(err)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при удалении ненужной обложки тайтла"))
 	}
 
 	if result := h.DB.Exec("DELETE FROM titles_on_moderation WHERE id = ?", titleOnModeration.ID); result.Error != nil {
@@ -135,7 +136,8 @@ func ConvertToTitle(titleOnModeration models.TitleOnModeration, title *models.Ti
 	if titleOnModeration.AuthorID.Int64 != 0 {
 		title.AuthorID = uint(titleOnModeration.AuthorID.Int64)
 	}
-	if titleOnModeration.CreatorID != 0 {
+
+	if !titleOnModeration.ExistingID.Valid { // Если тайтл новый, то ставим ему id создателя такой же как у тайтла на модерации
 		title.CreatorID = titleOnModeration.CreatorID
 	}
 }

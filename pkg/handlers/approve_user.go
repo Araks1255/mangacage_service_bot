@@ -87,8 +87,9 @@ func (h handler) ApproveUser(update tgbotapi.Update) {
 		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Аккаунт пользователя успешно верифицирован"))
 	}
 
-	if _, err = h.UsersOnModerationProfilePictures.DeleteOne(context.TODO(), filter); err != nil {
+	if _, err := h.UsersOnModerationProfilePictures.DeleteOne(context.TODO(), filter); err != nil {
 		log.Println(err)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при удалении ненужной аватарки пользователя"))
 	}
 
 	if result := h.DB.Exec("DELETE FROM users_on_moderation WHERE id = ?", userOnModeration.ID); result.Error != nil {

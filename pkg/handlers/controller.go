@@ -13,6 +13,8 @@ type handler struct {
 	Bot *tgbotapi.BotAPI
 	DB  *gorm.DB
 
+	MongoClient *mongo.Client
+
 	TitlesOnModerationCovers *mongo.Collection
 	TitlesCovers             *mongo.Collection
 
@@ -46,6 +48,7 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 	h := handler{
 		Bot:                              bot,
 		DB:                               db,
+		MongoClient:                      client,
 		TitlesOnModerationCovers:         titlesOnModerationCovers,
 		TitlesCovers:                     titlesCovers,
 		ChaptersOnModerationPages:        chaptersOnModerationPages,
@@ -150,6 +153,9 @@ func RegisterCommands(bot *tgbotapi.BotAPI, client *mongo.Client, db *gorm.DB) {
 
 			case "approve_volume":
 				go h.ApproveVolume(update)
+
+			case "approve_team":
+				go h.ApproveTeam(update)
 			}
 		}
 	}

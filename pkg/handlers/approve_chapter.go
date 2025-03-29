@@ -66,7 +66,6 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 	}
 
 	var filter bson.M
-
 	if !doesChapterExist {
 		var chapterPages ChapterPages
 
@@ -99,6 +98,7 @@ func (h handler) ApproveChapter(update tgbotapi.Update) {
 
 	if _, err := h.ChaptersOnModerationPages.DeleteOne(context.TODO(), filter); err != nil {
 		log.Println(err)
+		h.Bot.Send(tgbotapi.NewMessage(tgUserID, "Произошла ошибка при удалении ненужных страниц главы"))
 	}
 
 	if result := h.DB.Exec("DELETE FROM chapters_on_moderation WHERE id = ?", chapterOnModeration.ID); result.Error != nil {
@@ -131,13 +131,10 @@ func EditChapter(chapterOnModeration models.ChapterOnModeration, chapter *models
 	if chapterOnModeration.NumberOfPages != 0 {
 		chapter.NumberOfPages = chapterOnModeration.NumberOfPages
 	}
-	if chapterOnModeration.VolumeID.Int64 != 0 {
-		chapter.VolumeID = uint(chapterOnModeration.VolumeID.Int64)
-	}
-	if chapterOnModeration.CreatorID != 0 {
+
+	if !chapterOnModeration.ExistingID.Valid {
 		chapter.CreatorID = chapterOnModeration.CreatorID
 	}
-	if chapterOnModeration.VolumeID.Int64 != 0 {
-		chapter.VolumeID = uint(chapterOnModeration.VolumeID.Int64)
-	}
+
+	chapter.VolumeID = uint(chapterOnModeration.VolumeID.Int64)
 }
